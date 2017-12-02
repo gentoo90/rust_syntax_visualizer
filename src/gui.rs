@@ -110,7 +110,6 @@ pub(crate) fn gui_main() -> Result<()> {
         .downcast::<Buffer>()
         .map_err(|_| ErrorKind::DowncastFailed("TextBuffer", "Buffer"))?;
 
-
     // syntax_tree_view.set_headers_visible(false);
     add_ast_columns(&syntax_tree_view);
     add_properties_columns(&node_properties_view);
@@ -122,6 +121,7 @@ pub(crate) fn gui_main() -> Result<()> {
     }
 
     let syntax_tree_selection = syntax_tree_view.get_selection();
+    let buffer_clone = buffer.clone();
     syntax_tree_selection.connect_changed(move |tree_selection| {
         if let Some((model, iter)) = tree_selection.get_selected() {
             let props = model.get_properties_list(&iter);
@@ -133,14 +133,26 @@ pub(crate) fn gui_main() -> Result<()> {
             }
             let lo = model.get_lo(&iter);
             let hi = model.get_hi(&iter);
-            let lo_iter = buffer.get_iter_at_offset(lo as i32);
-            let hi_iter = buffer.get_iter_at_offset(hi as i32);
-            buffer.select_range(&lo_iter, &hi_iter);
+            let lo_iter = buffer_clone.get_iter_at_offset(lo as i32);
+            let hi_iter = buffer_clone.get_iter_at_offset(hi as i32);
+            buffer_clone.select_range(&lo_iter, &hi_iter);
         }
         else {
             node_properties_view.set_model(None::<&TreeModel>);
         }
     });
+
+    buffer.connect_property_cursor_position_notify(move |buffer| {
+        let pos = buffer.get_property_cursor_position();
+        println!("new cursor position: {}", pos);
+        let model = syntax_tree_view.get_model().expect("Couldnt get tree model");
+        if let Some(iter) = model.find_node_by_pos(pos) {
+            let path = model.get_path(&iter).expect("Could not get tree path");
+            syntax_tree_view.expand_to_path(&path);
+            syntax_tree_selection.select_iter(&iter);
+        }
+    });
+
 
     main_window.connect_delete_event(|_, _| {
         gtk::main_quit();

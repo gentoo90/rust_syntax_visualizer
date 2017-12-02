@@ -18,6 +18,7 @@ pub(crate) trait AstModelExt {
     fn get_has_span(&self, iter: &TreeIter) -> bool;
     fn get_lo(&self, iter: &TreeIter) -> u32;
     fn get_hi(&self, iter: &TreeIter) -> u32;
+    fn find_node_by_pos(&self, pos: i32) -> Option<TreeIter>;
 }
 
 macro_rules! get_ast_model_value {
@@ -25,6 +26,33 @@ macro_rules! get_ast_model_value {
         $model.get_value($iter, AstModelColumns::$col as i32)
                     .get::<$type>().expect("Could not get value from TreeStore")
     }
+}
+
+fn _is_in_span<T: AstModelExt + TreeModelExt>(model: &T, iter: &TreeIter, pos: u32) -> bool {
+    let lo = model.get_lo(iter);
+    let hi = model.get_hi(iter);
+
+    let res = (lo <= pos) && (pos <= hi);
+    println!("{} in {}:{} = {}", pos, lo, hi, res);
+    res
+}
+
+fn _find_node_by_pos<T: AstModelExt + TreeModelExt>(model: &T, iter: &TreeIter, pos: i32) -> Option<TreeIter> {
+    let len = model.iter_n_children(iter);
+    if len == 0 && _is_in_span(model, iter, pos as u32) {
+        return Some(iter.clone());
+    }
+
+    // foreach child call _find_node_by_pos untill it returns Some()
+    for i in 0..len {
+        let child = model.iter_nth_child(iter, i).expect("COuld not get iter child");
+        let child_res = _find_node_by_pos(model, &child, pos);
+        if let Some(_) = child_res {
+            return child_res;
+        }
+    }
+
+    None
 }
 
 impl<O: IsA<TreeModel> + TreeModelExt> AstModelExt for O {
@@ -50,6 +78,11 @@ impl<O: IsA<TreeModel> + TreeModelExt> AstModelExt for O {
 
     fn get_hi(&self, iter: &TreeIter) -> u32 {
         get_ast_model_value!(self, iter, Hi, u32)
+    }
+
+    fn find_node_by_pos(&self, pos: i32) -> Option<TreeIter> {
+        let first = self.get_iter_first()?;
+        _find_node_by_pos(self, &first, pos)
     }
 }
 
