@@ -6,7 +6,7 @@ use std::env;
 use echain::{ErrorKind, Result};
 use gtk;
 use gtk::prelude::*;
-use gtk::{Builder, Window, WidgetExt, TreeView, TreeViewExt, TreeViewColumn, CellRendererText, TreeStore};
+use gtk::{Builder, Window, WidgetExt, TreeView, TreeViewExt, TreeViewColumn, CellRendererText, TreeStore, TreeModel};
 use sourceview::{Buffer, BufferExt, LanguageManager, LanguageManagerExt, View};
 use syntex_syntax::codemap::FilePathMapping;
 use syntex_syntax::parse::{self, ParseSess};
@@ -14,7 +14,7 @@ use syntex_syntax::visit::walk_crate;
 
 use visitor::TreeVisitor;
 use tree_column_set_data_func_ext::TreeViewColumnSetCellDataFuncExt;
-use ast_model_extensions::{AstModelExt, AstModelColumns};
+use ast_model_extensions::{AstModelExt, AstModelColumns, AstPropertiesColumns};
 
 macro_rules! column {
     ($tree:expr, $col:ident, $cell:ident, $type:ident, $title:expr, $expand:expr) => {
@@ -26,7 +26,7 @@ macro_rules! column {
     };
 }
 
-fn add_columns(tree: &TreeView) {
+fn add_ast_columns(tree: &TreeView) {
     column!(tree, type_col, type_cell, CellRendererText, "Type", true);
     type_col.add_attribute(&type_cell, "text", AstModelColumns::Type as i32);
     column!(tree, kind_col, kind_cell, CellRendererText, "Kind", true);
@@ -46,6 +46,13 @@ fn add_columns(tree: &TreeView) {
             text_cell.set_property_text(Some(""));
         }
     });
+}
+
+fn add_properties_columns(list: &TreeView) {
+    column!(list, name_col, name_cell, CellRendererText, "Property", true);
+    name_col.add_attribute(&name_cell, "text", AstPropertiesColumns::Name as i32);
+    column!(list, value_col, value_cell, CellRendererText, "Value", true);
+    value_col.add_attribute(&value_cell, "text", AstPropertiesColumns::Value as i32);
 }
 
 fn open_file<T: AsRef<Path>>(path: T, buffer: &Buffer) {
@@ -95,6 +102,8 @@ pub(crate) fn gui_main() -> Result<()> {
 
     get_widget!(builder, main_window, Window);
     get_widget!(builder, source_view, View);
+    get_widget!(builder, syntax_tree_view, TreeView);
+    get_widget!(builder, node_properties_view, TreeView);
 
     let buffer: Buffer = source_view.get_buffer()
         .ok_or(ErrorKind::WidgetNotFound("Buffer"))?
@@ -102,9 +111,9 @@ pub(crate) fn gui_main() -> Result<()> {
         .map_err(|_| ErrorKind::DowncastFailed("TextBuffer", "Buffer"))?;
 
 
-    get_widget!(builder, syntax_tree_view, TreeView);
     // syntax_tree_view.set_headers_visible(false);
-    add_columns(&syntax_tree_view);
+    add_ast_columns(&syntax_tree_view);
+    add_properties_columns(&node_properties_view);
 
     if let Some(path) = env::args().nth(1) {
         let syntax_tree_store = parse_file(&path);
@@ -112,9 +121,12 @@ pub(crate) fn gui_main() -> Result<()> {
         syntax_tree_view.set_model(Some(&syntax_tree_store));
     }
 
-    let selection = syntax_tree_view.get_selection();
-    selection.connect_changed(move |tree_selection| {
+    let syntax_tree_selection = syntax_tree_view.get_selection();
+    syntax_tree_selection.connect_changed(move |tree_selection| {
         if let Some((model, iter)) = tree_selection.get_selected() {
+            let props = model.get_properties_list(&iter);
+            node_properties_view.set_model(Some(&props));
+
             let has_span = model.get_has_span(&iter);
             if !has_span {
                 return;
@@ -124,6 +136,9 @@ pub(crate) fn gui_main() -> Result<()> {
             let lo_iter = buffer.get_iter_at_offset(lo as i32);
             let hi_iter = buffer.get_iter_at_offset(hi as i32);
             buffer.select_range(&lo_iter, &hi_iter);
+        }
+        else {
+            node_properties_view.set_model(None::<&TreeModel>);
         }
     });
 
