@@ -6,7 +6,7 @@ use std::env;
 use echain::{ErrorKind, Result};
 use gtk;
 use gtk::prelude::*;
-use gtk::{Builder, Window, WidgetExt, TreeView, TreeViewExt, TreeViewColumn, CellRendererText, TreeStore, TreeModel};
+use gtk::{Builder, Window, WidgetExt, TreeView, TreeViewExt, TreeViewColumn, CellRendererText, TreeStore, TreeModel, TextTag};
 use sourceview::{Buffer, BufferExt, LanguageManager, LanguageManagerExt, View};
 use syntex_syntax::codemap::FilePathMapping;
 use syntex_syntax::parse::{self, ParseSess};
@@ -37,9 +37,7 @@ fn add_ast_columns(tree: &TreeView) {
         let text_cell = cell.clone().downcast::<CellRendererText>()
             .expect("Couldn't downcast to CellRendererText");
 
-        if model.get_has_span(iter) {
-            let lo = model.get_lo(iter);
-            let hi = model.get_hi(iter);
+        if let Some((lo, hi)) = model.get_span(iter) {
             text_cell.set_property_text(Some(&format!("[{}..{})", lo, hi)));
         }
         else {
@@ -120,6 +118,11 @@ pub(crate) fn gui_main() -> Result<()> {
         syntax_tree_view.set_model(Some(&syntax_tree_store));
     }
 
+    let tag_table = buffer.get_tag_table().ok_or(ErrorKind::WidgetNotFound("TagTable"))?;
+    let tag_highlighted = TextTag::new("highlighted");
+    tag_highlighted.set_property_background(Some("#dcebff"));
+    tag_table.add(&tag_highlighted);
+
     let syntax_tree_selection = syntax_tree_view.get_selection();
     let buffer_clone = buffer.clone();
     syntax_tree_selection.connect_changed(move |tree_selection| {
@@ -127,15 +130,15 @@ pub(crate) fn gui_main() -> Result<()> {
             let props = model.get_properties_list(&iter);
             node_properties_view.set_model(Some(&props));
 
-            let has_span = model.get_has_span(&iter);
-            if !has_span {
-                return;
+            if let Some((lo, hi)) = model.get_span(&iter) {
+                let (start_iter, end_iter) = buffer_clone.get_bounds();
+                buffer_clone.remove_tag_by_name("highlighted", &start_iter, &end_iter);
+
+                let mut lo_iter = buffer_clone.get_iter_at_offset(lo as i32);
+                let hi_iter = buffer_clone.get_iter_at_offset(hi as i32);
+                buffer_clone.apply_tag_by_name("highlighted", &lo_iter, &hi_iter);
+                source_view.scroll_to_iter(&mut lo_iter, 0.1, false, 0.0, 0.0);
             }
-            let lo = model.get_lo(&iter);
-            let hi = model.get_hi(&iter);
-            let lo_iter = buffer_clone.get_iter_at_offset(lo as i32);
-            let hi_iter = buffer_clone.get_iter_at_offset(hi as i32);
-            buffer_clone.select_range(&lo_iter, &hi_iter);
         }
         else {
             node_properties_view.set_model(None::<&TreeModel>);
@@ -150,9 +153,9 @@ pub(crate) fn gui_main() -> Result<()> {
             let path = model.get_path(&iter).expect("Could not get tree path");
             syntax_tree_view.expand_to_path(&path);
             syntax_tree_selection.select_iter(&iter);
+            syntax_tree_view.scroll_to_cell(&path, None, false, 0.0, 0.0);
         }
     });
-
 
     main_window.connect_delete_event(|_, _| {
         gtk::main_quit();
