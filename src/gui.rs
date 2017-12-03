@@ -126,14 +126,14 @@ pub(crate) fn gui_main() -> Result<()> {
     let syntax_tree_selection = syntax_tree_view.get_selection();
     let buffer_clone = buffer.clone();
     syntax_tree_selection.connect_changed(move |tree_selection| {
+        let (start_iter, end_iter) = buffer_clone.get_bounds();
+        buffer_clone.remove_tag_by_name("highlighted", &start_iter, &end_iter);
+
         if let Some((model, iter)) = tree_selection.get_selected() {
             let props = model.get_properties_list(&iter);
             node_properties_view.set_model(Some(&props));
 
             if let Some((lo, hi)) = model.get_span(&iter) {
-                let (start_iter, end_iter) = buffer_clone.get_bounds();
-                buffer_clone.remove_tag_by_name("highlighted", &start_iter, &end_iter);
-
                 let mut lo_iter = buffer_clone.get_iter_at_offset(lo as i32);
                 let hi_iter = buffer_clone.get_iter_at_offset(hi as i32);
                 buffer_clone.apply_tag_by_name("highlighted", &lo_iter, &hi_iter);
