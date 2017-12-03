@@ -38,6 +38,6 @@ Windows x64:
 pacman -S mingw-w64-x86_64-gtksourceview3
 ```
 
-## Build
+## Run
 
-`cargo build --release`
+`cargo run -- path/to/rust/file.rs`
