@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Generated with glade 3.20.0 -->
 <interface>
-  <requires lib="gtk+" version="3.20"/>
+  <requires lib="gtk+" version="3.10"/>
   <requires lib="gtksourceview" version="3.0"/>
   <object class="GtkWindow" id="main_window">
     <property name="can_focus">False</property>
@@ -10,18 +10,18 @@
     <property name="default_width">1400</property>
     <property name="default_height">800</property>
     <child>
-      <object class="GtkPaned">
+      <object class="GtkPaned" id="main_panel">
         <property name="visible">True</property>
         <property name="can_focus">True</property>
         <property name="position">400</property>
         <child>
-          <object class="GtkPaned">
+          <object class="GtkPaned" id="right_panel">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="orientation">vertical</property>
             <property name="position">500</property>
             <child>
-              <object class="GtkScrolledWindow">
+              <object class="GtkScrolledWindow" id="syntax_tree_scrollbox">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="shadow_type">in</property>
@@ -30,7 +30,7 @@
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <child internal-child="selection">
-                      <object class="GtkTreeSelection"/>
+                      <object class="GtkTreeSelection" id="syntax_tree_selection"/>
                     </child>
                   </object>
                 </child>
@@ -41,7 +41,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkScrolledWindow">
+              <object class="GtkScrolledWindow" id="node_properties_scrollbox">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="shadow_type">in</property>
@@ -50,7 +50,7 @@
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <child internal-child="selection">
-                      <object class="GtkTreeSelection"/>
+                      <object class="GtkTreeSelection" id="node_properties_selection"/>
                     </child>
                   </object>
                 </child>
@@ -67,7 +67,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkScrolledWindow">
+          <object class="GtkScrolledWindow" id="source_view_scrollbox">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="shadow_type">in</property>
