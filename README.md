@@ -8,7 +8,7 @@ Uses `GTK+-3` and `GtkSourceView-3` for GUI and `syntax_syntex` for rust parsing
 
 Inspired by [Roslyn Syntax Visualizer](https://github.com/dotnet/roslyn/wiki/Syntax-Visualizer).
 
-![rust_syntax_visualizer](rust_syntax_visualizer.png)
+![rust_syntax_visualizer](rust_syntax_visualizer.gif)
 
 ## Prerequisites
 
